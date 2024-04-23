@@ -1,4 +1,3 @@
-# +
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,37 +7,6 @@ from .util.adaptive_mixing_operator import AdaptiveMixing
 from .util.head_utils import _get_activation_layer, bias_init_with_prob, decode_box, position_embedding, make_sample_points
 from .util.head_utils import FFN, MultiheadAttention
 from .util.loss import SetCriterion, HungarianMatcher
-
-
-import numpy as np
-
-
-# -
-
-def get_variable_info(*args):
-    variable_info = {}
-    
-    def get_info(arg):
-        info = {}
-        if isinstance(arg, torch.Tensor):
-            info["type"] = "Tensor"
-            info["shape"] = tuple(arg.shape)
-        elif isinstance(arg, (list, tuple)):
-            info["length"] = len(arg)
-            if arg:  # Check if the list or tuple is not empty
-                item_shapes = []
-                for item in arg:
-                    item_shapes.append(get_info(item))
-                info["item_shapes"] = item_shapes
-        else:
-            info["type"] = type(arg).__name__
-        return info
-    
-    for i, arg_value in enumerate(args):
-        arg_name = f"arg_{i+1}"  # Create a name for the argument
-        variable_info[arg_name] = get_info(arg_value)
-    
-    return variable_info
 
 
 class AdaptiveSTSamplingMixing(nn.Module):
@@ -429,7 +397,7 @@ class STMDecoder(nn.Module):
 
 
     def forward(self, features, whwh, gt_boxes, labels, extras={}, part_forward=-1):
-        
+
         proposal_boxes, spatial_queries, temporal_queries = self._decode_init_queries(whwh)
 
         inter_class_logits = []
@@ -440,14 +408,12 @@ class STMDecoder(nn.Module):
         for decoder_stage in self.decoder_stages:
             objectness_score, action_score, delta_xyzr, spatial_queries, temporal_queries = \
                 decoder_stage(features, proposal_boxes, spatial_queries, temporal_queries)
-            
-            #print("input shapes to decoder stage: ", get_variable_info(features, proposal_boxes, spatial_queries, temporal_queries))
-            #print("output shapes of decoder stage: ", get_variable_info(objectness_score, action_score, delta_xyzr, spatial_queries, temporal_queries))
             proposal_boxes, pred_boxes = decoder_stage.refine_xyzr(proposal_boxes, delta_xyzr)
 
             inter_class_logits.append(objectness_score)
             inter_pred_bboxes.append(pred_boxes)
             inter_action_logits.append(action_score)
+
 
         if not self.training:
             action_scores = torch.sigmoid(inter_action_logits[-1])
@@ -455,18 +421,11 @@ class STMDecoder(nn.Module):
             # scores: B*100
             action_score_list = []
             box_list = []
-            obj_score_list = [] # added by Hamed
-            
             for i in range(B):
                 selected_idx = scores[i] >= self.person_threshold
                 if not any(selected_idx):
-                    # _,selected_idx = torch.topk(scores[i],k=3,dim=-1) # Original line
-                    continue # added by Hamed
-                    
-                
-                
-                new_objectness_score = scores[i][selected_idx] # added by Hamed
-                
+                    _,selected_idx = torch.topk(scores[i],k=3,dim=-1)
+
                 action_score = action_scores[i][selected_idx]
                 box = inter_pred_bboxes[-1][i][selected_idx]
                 cur_whwh = whwh[i]
@@ -475,10 +434,7 @@ class STMDecoder(nn.Module):
                 box[:, 1::2] /= cur_whwh[1]
                 action_score_list.append(action_score)
                 box_list.append(box)
-                
-                obj_score_list.append(new_objectness_score) # added by Hamed
-                
-            return action_score_list, box_list, obj_score_list # new_objectness_score is added by me
+            return action_score_list, box_list
 
 
         targets = self.make_targets(gt_boxes, whwh, labels)

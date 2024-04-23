@@ -429,7 +429,7 @@ class STMDecoder(nn.Module):
 
 
     def forward(self, features, whwh, gt_boxes, labels, extras={}, part_forward=-1):
-        
+
         proposal_boxes, spatial_queries, temporal_queries = self._decode_init_queries(whwh)
 
         inter_class_logits = []
@@ -448,6 +448,7 @@ class STMDecoder(nn.Module):
             inter_class_logits.append(objectness_score)
             inter_pred_bboxes.append(pred_boxes)
             inter_action_logits.append(action_score)
+
 
         if not self.training:
             action_scores = torch.sigmoid(inter_action_logits[-1])

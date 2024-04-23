@@ -1,4 +1,3 @@
-# +
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,37 +7,6 @@ from .util.adaptive_mixing_operator import AdaptiveMixing
 from .util.head_utils import _get_activation_layer, bias_init_with_prob, decode_box, position_embedding, make_sample_points
 from .util.head_utils import FFN, MultiheadAttention
 from .util.loss import SetCriterion, HungarianMatcher
-
-
-import numpy as np
-
-
-# -
-
-def get_variable_info(*args):
-    variable_info = {}
-    
-    def get_info(arg):
-        info = {}
-        if isinstance(arg, torch.Tensor):
-            info["type"] = "Tensor"
-            info["shape"] = tuple(arg.shape)
-        elif isinstance(arg, (list, tuple)):
-            info["length"] = len(arg)
-            if arg:  # Check if the list or tuple is not empty
-                item_shapes = []
-                for item in arg:
-                    item_shapes.append(get_info(item))
-                info["item_shapes"] = item_shapes
-        else:
-            info["type"] = type(arg).__name__
-        return info
-    
-    for i, arg_value in enumerate(args):
-        arg_name = f"arg_{i+1}"  # Create a name for the argument
-        variable_info[arg_name] = get_info(arg_value)
-    
-    return variable_info
 
 
 class AdaptiveSTSamplingMixing(nn.Module):
@@ -295,12 +263,13 @@ class AMStage(nn.Module):
 
 
 
+# +
 class STMDecoder(nn.Module):
 
     def __init__(self, cfg):
 
         super(STMDecoder, self).__init__()
-        self.device = torch.device('cuda')
+        self.device = torch.device('cpu')
 
         self._generate_queries(cfg)
 
@@ -397,59 +366,45 @@ class STMDecoder(nn.Module):
 
         return xyzr, init_spatial_queries, init_temporal_queries
 
-    def person_detector_loss(self, outputs_class, outputs_coord, criterion, targets, outputs_actions):
-        if self.intermediate_supervision:
-            output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1], 'pred_actions':outputs_actions[-1],
-                      'aux_outputs': [{'pred_logits': a, 'pred_boxes': b, 'pred_actions':c}
-                                      for a, b, c in zip(outputs_class[:-1], outputs_coord[:-1], outputs_actions[:-1])]}
-        else:
-            raise NotImplementedError
-
-        loss_dict = criterion(output, targets)
-        return loss_dict
-
-
-    def make_targets(self, gt_boxes, whwh, labels):
-        targets = []
-        for box_in_clip, frame_size, label in zip(gt_boxes, whwh, labels):
-            target = {}
-            target['action_labels'] = torch.tensor(label, dtype=torch.float32, device=self.device)
-            target['boxes_xyxy'] = torch.tensor(box_in_clip, dtype=torch.float32, device=self.device)
-            # num_box, 4 (x1,y1,x2,y2) w.r.t augmented images unnormed
-            target['labels'] = torch.zeros(len(target['boxes_xyxy']), dtype=torch.int64, device=self.device)
-            target["image_size_xyxy"] = frame_size.to(self.device)
-            # (4,) whwh
-            image_size_xyxy_tgt = frame_size.unsqueeze(0).repeat(len(target['boxes_xyxy']), 1)
-            target["image_size_xyxy_tgt"] = image_size_xyxy_tgt.to(self.device)
-            # (num_box, 4) whwh
-            targets.append(target)
-
-        return targets
+   
 
 
 
-    def forward(self, features, whwh, gt_boxes, labels, extras={}, part_forward=-1):
+    def forward(self, features):
         
+        part_forward=-1
+        
+        
+        values = [[320., 256., 320., 256.]]
+
+        # Create the tensor
+        whwh = torch.tensor(values, device='cpu')
+
         proposal_boxes, spatial_queries, temporal_queries = self._decode_init_queries(whwh)
+        
+        
 
         inter_class_logits = []
         inter_pred_bboxes = []
         inter_action_logits = []
         B, N, _ = spatial_queries.size()
-
+        
+        
         for decoder_stage in self.decoder_stages:
             objectness_score, action_score, delta_xyzr, spatial_queries, temporal_queries = \
                 decoder_stage(features, proposal_boxes, spatial_queries, temporal_queries)
-            
-            #print("input shapes to decoder stage: ", get_variable_info(features, proposal_boxes, spatial_queries, temporal_queries))
-            #print("output shapes of decoder stage: ", get_variable_info(objectness_score, action_score, delta_xyzr, spatial_queries, temporal_queries))
+        
+        for decoder_stage in self.decoder_stages:
+            objectness_score, action_score, delta_xyzr, spatial_queries, temporal_queries = \
+                decoder_stage(features, proposal_boxes, spatial_queries, temporal_queries)
             proposal_boxes, pred_boxes = decoder_stage.refine_xyzr(proposal_boxes, delta_xyzr)
 
             inter_class_logits.append(objectness_score)
             inter_pred_bboxes.append(pred_boxes)
             inter_action_logits.append(action_score)
 
-        if not self.training:
+            
+        if False: #not self.training
             action_scores = torch.sigmoid(inter_action_logits[-1])
             scores = F.softmax(inter_class_logits[-1], dim=-1)[:, :, 0]
             # scores: B*100
@@ -469,25 +424,16 @@ class STMDecoder(nn.Module):
                 
                 action_score = action_scores[i][selected_idx]
                 box = inter_pred_bboxes[-1][i][selected_idx]
-                cur_whwh = whwh[i]
-                box = clip_boxes_tensor(box, cur_whwh[1], cur_whwh[0])
-                box[:, 0::2] /= cur_whwh[0]
-                box[:, 1::2] /= cur_whwh[1]
                 action_score_list.append(action_score)
                 box_list.append(box)
                 
                 obj_score_list.append(new_objectness_score) # added by Hamed
                 
-            return action_score_list, box_list, obj_score_list # new_objectness_score is added by me
+            return [action_score_list, box_list, obj_score_list] # new_objectness_score is added by me
 
 
-        targets = self.make_targets(gt_boxes, whwh, labels)
-        losses = self.person_detector_loss(inter_class_logits, inter_pred_bboxes, self.criterion, targets, inter_action_logits)
-        weight_dict = self.criterion.weight_dict
-        for k in losses.keys():
-            if k in weight_dict:
-                losses[k] *= weight_dict[k]
-        return losses
+       
+# -
 
 def build_stm_decoder(cfg):
     return STMDecoder(cfg)

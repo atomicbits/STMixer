@@ -1,0 +1,24 @@
+numpy < 1.24
+tqdm
+typeguard
+visualdl>=2.2.0
+opencv-python <= 4.6.0
+PyYAML
+shapely
+scipy
+terminaltables
+pycocotools
+setuptools
+yacs
+timm
+tensorboard
+tensorboardX
+iopath
+### SLOWFAST
+fvcore
+simplejson
+av # PyAV
+psutil
+moviepy
+pytorchvideo
+fairscale

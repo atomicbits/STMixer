@@ -33,8 +33,8 @@ class STMDetector(nn.Module):
     def __init__(self, cfg):
         super(STMDetector, self).__init__()
         self.backbone = build_backbone(cfg)
-        self._construct_space(cfg)
-        self.stm_head = build_stm_decoder(cfg)
+        #self._construct_space(cfg)
+        ##self.stm_head = build_stm_decoder(cfg) #V2: removing HEAD
         self.device = torch.device('cuda')
 
 
@@ -105,7 +105,9 @@ class STMDetector(nn.Module):
         return mapped_features
 
 
-    def forward(self, slow_video, fast_video, whwh, boxes, labels, extras={}, part_forward=-1):
+    ##def forward(self, slow_video, fast_video, whwh, boxes, labels, extras={}, part_forward=-1): # ORIG
+    def forward(self, slow_video): ## V2: specific for only slow_video input
+        
         # part_forward is used to split this model into two parts.
         # if part_forward<0, just use it as a single model
         # if part_forward=0, use this model to extract pooled feature(person and object, no memory features).
@@ -114,11 +116,15 @@ class STMDetector(nn.Module):
 
         if self.backbone.num_pathways == 1:
             features = self.backbone([slow_video])
-        else:
-            features = self.backbone([slow_video, fast_video])
-        mapped_features = self.space_forward(features)
-
-        return self.stm_head(mapped_features, whwh, boxes, labels)
+        ##else: V2: 
+        ##    features = self.backbone([slow_video, fast_video])
+        
+        return features
+        
+        ##mapped_features = self.space_forward(features) 
+        
+        
+        # return self.stm_head(mapped_features, whwh, boxes, labels)
 
 
 def build_detection_model(cfg):

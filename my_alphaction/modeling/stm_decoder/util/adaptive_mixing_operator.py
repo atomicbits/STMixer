@@ -7,7 +7,6 @@ class AdaptiveMixing(nn.Module):
     def __init__(self, in_dim, in_points, n_groups, query_dim=None,
                  out_dim=None, out_points=None, sampling_rate=None):
         super(AdaptiveMixing, self).__init__()
-        
         out_dim = out_dim if out_dim is not None else in_dim
         out_points = out_points if out_points is not None else in_points
         query_dim = query_dim if query_dim is not None else in_dim

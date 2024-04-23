@@ -105,20 +105,25 @@ class STMDetector(nn.Module):
         return mapped_features
 
 
-    def forward(self, slow_video, fast_video, whwh, boxes, labels, extras={}, part_forward=-1):
+    def forward(self, slow_video):
         # part_forward is used to split this model into two parts.
         # if part_forward<0, just use it as a single model
         # if part_forward=0, use this model to extract pooled feature(person and object, no memory features).
         # if part_forward=1, use the ia structure to aggregate interactions and give final result.
         # implemented in roi_heads
 
-        if self.backbone.num_pathways == 1:
-            features = self.backbone([slow_video])
-        else:
-            features = self.backbone([slow_video, fast_video])
+       
+        features = self.backbone([slow_video])
+        
         mapped_features = self.space_forward(features)
-
-        return self.stm_head(mapped_features, whwh, boxes, labels)
+        
+        mapped_features = [torch.randn(1, 256, 8, 64, 80),
+                    torch.randn(1, 256, 8, 32, 40),
+                    torch.randn(1, 256, 8, 16, 20),
+                     torch.randn(1, 256, 8, 8, 10)]
+     
+        #return mapped_features # FOR ONNX conversion of until neck
+        return self.stm_head(mapped_features)
 
 
 def build_detection_model(cfg):
