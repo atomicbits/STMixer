@@ -73,14 +73,14 @@ def visualize_crop_on_frames(video_path, frame_index=0, length=1, crop=None):
     return frames
 
 
-def segment_crop_video(video_path, frame_index=0, length=1, crop=None):
+def segment_crop_video(video_path, frame_index=0, length=-1, crop=None):
     """
     temporaly segment and spatially crop a video.
 
     Args:
         video_path (str): Path to the video file.
         frame_index (int): Index of the frame for segmentation.
-        length (int): Number of frames for segmentation.
+        length (int): Number of frames for segmentation. -1 means all frames.
         crop (list): Bounding box coordinates in the form [x1, y1, x2, y2].
 
     Returns:
@@ -99,6 +99,11 @@ def segment_crop_video(video_path, frame_index=0, length=1, crop=None):
         crop_x1, crop_y1, crop_x2, crop_y2 = 0, 0, -1, -1
 
     frames = []
+    
+    if length == -1:
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        length = total_frames - frame_index
+            
 
     for _ in range(length):
         ret, frame = video_capture.read()

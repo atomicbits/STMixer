@@ -1,167 +1,143 @@
-# OBSS SAHI Tool
-# Code written by Fatih C Akyon, 2021.
-
-from typing import List
-
-import torch
 import numpy as np
 
+def compute_iou(box1, box2, nms_distance='IOS'):
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
 
-def nms(
-    predictions: torch.tensor,
-    sort_metric: str = "scores",
-    match_threshold: float = 0.5,
-    match_metric: str = "IOU"
-):
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+
+    if nms_distance == 'IOU':
+        union = (box1[2] - box1[0]) * (box1[3] - box1[1]) + \
+            (box2[2] - box2[0]) * (box2[3] - box2[1]) - intersection
+    elif nms_distance == 'IOS':
+        min_area = min((box1[2] - box1[0]) * (box1[3] - box1[1]),
+                       (box2[2] - box2[0]) * (box2[3] - box2[1]))
+        union = min_area
+
+    iou = intersection / union if union > 0 else 0
+    return iou
+
+def agnostic_nms_action_detection(detections, nms_score='obj_score', nms_distance='IOU', nms_thresh=0.5):
     """
-    Apply non-maximum suppression to avoid detecting too many
-    overlapping bounding boxes for a given object.
-    Args:
-        predictions: (tensor) The location preds for the image
-            along with the class predscores, Shape: [num_boxes,5].
-        match_metric: (str) IOU or IOS
-        match_threshold: (float) The overlap thresh for
-            match metric.
+    Apply Non-Maximum Suppression (NMS) on action detection results.
+
+    Parameters:
+        detections (numpy.ndarray): Array of shape Nx15 where N is the number of detected objects.
+                                    Each row contains [obj_score, x1, y1, x2, y2, action_id1, action_id2, ...,
+                                    action_id5, action_score1, action_score2, ..., action_score5].
+        agnostic (bool): If True, NMS will be applied to all detections together.
+                         If False, NMS will be applied separately for each class.
+        type_score (str): Type of score to be used for sorting: 'obj_score', 'action_score', or 'joint'.
+        nms_method (str): NMS method to be used: 'IOU' or 'IOS'.
+        iou_threshold (float): Threshold for IOU or IOS.
+
     Returns:
-        A list of filtered indexes, Shape: [ ,]
+        numpy.ndarray: Filtered detections after applying NMS.
     """
 
-    # we extract coordinates for every
-    # prediction box present in P
+    # Sort detections based on score
+    if nms_score == 'obj_score':
+        score_index = 0
+        sorted_indices = np.argsort(detections[:, score_index])[::-1]
+    elif nms_score == 'action_score':
+        score_index = slice(-5, None)  # Selecting action score columns
+        sorted_indices = np.argsort(detections[:, score_index])[::-1]
+    elif nms_score == 'joint':
+        sorted_indices = np.argsort(detections[:, 0] * detections[:, 5])[::-1]
+
+    detections = detections[sorted_indices]
+
+    keep_indices = []
+    while len(detections) > 0:
+        keep_indices.append(detections[0])
+
+        iou_scores = np.array([compute_iou(detections[0, 1:5], detections[i, 1:5], nms_distance) for i in range(1, len(detections))])
+        mask = iou_scores <= nms_thresh
+        detections = detections[1:][mask]
+
+    return np.array(keep_indices)
+
+
+def class_based_nms_action_detection(detections, nms_score='obj_score', nms_distance='IOU', nms_thresh=0.5):
+    """
+    Apply Non-Maximum Suppression (NMS) on action detection results based on their classes. Top action define the class.
+
+    Parameters:
+        detections (numpy.ndarray): Array of shape Nx15 where N is the number of detected objects.
+                                    Each row contains [obj_score, x1, y1, x2, y2, action_id1, action_id2, ...,
+                                    action_id5, action_score1, action_score2, ..., action_score5].
+        nms_score (str): Type of score to be used for sorting: 'obj_score', 'action_score', or 'joint'.
+        nms_distance (str): NMS method to be used: 'IOU' or 'IOS'.
+        nms_thresh (float): Threshold for IOU or IOS.
+
+    Returns:
+        numpy.ndarray: Filtered detections after applying NMS.
+    """
+
+    # Sort detections based on score
+     # Sort detections based on score
+    if nms_score == 'obj_score':
+        score_index = 0
+        sorted_indices = np.argsort(detections[:, score_index])[::-1]
+    elif nms_score == 'action_score':
+        score_index = slice(-5, None)  # Selecting action score columns
+        sorted_indices = np.argsort(detections[:, score_index])[::-1]
+    elif nms_score == 'joint':
+        sorted_indices = np.argsort(detections[:, 0] * detections[:, 5])[::-1]
     
-    # we extract the confidence scores as well
-    scores = predictions[:, 0]
+    detections = detections[sorted_indices]
+    
+    # unique top class ids
+    unique_action_ids = np.unique(detections[:, 5])
     
     
-    x1 = predictions[:, 1]
-    y1 = predictions[:, 2]
-    x2 = predictions[:, 3]
-    y2 = predictions[:, 4]
+    keep_indices = []
+    for action_id in unique_action_ids:
+        action_mask = detections[:, 5] == action_id
+        action_detections = detections[action_mask]
 
-    
+        while len(action_detections) > 0:
+            keep_indices.append(action_detections[0])
 
-    # calculate area of every block in P
-    areas = (x2 - x1) * (y2 - y1)
+            iou_scores = np.array([compute_iou(action_detections[0, 1:5], action_detections[i, 1:5], nms_distance) for i in range(1, len(action_detections))])
 
-    # sort the prediction boxes in P
-    # according to their confidence scores
-    if sort_metric == "scores":
-        order = scores.argsort()
-    elif sort_metric == "areas":
-        order = areas.argsort()
-    else:
-        raise ValueError()
+            mask = iou_scores <= nms_thresh
+            action_detections = action_detections[1:][mask]
 
-    # initialise an empty list for
-    # filtered prediction boxes
-    keep = []
+    return np.array(keep_indices)
 
-    while len(order) > 0:
-        # extract the index of the
-        # prediction with highest score
-        # we call this prediction S
-        idx = order[-1]
+def apply_nms_to_dict(detections_dict, agnostic=True, nms_score='obj_score', nms_distance='IOS', nms_thresh=0.5):
+    """
+    Apply NMS post-processing on a dictionary of action detections.
 
-        # push S in filtered predictions list
-        keep.append(idx.tolist())
+    Parameters:
+        detections_dict (dict): Dictionary where keys are frame indices and values are arrays of action detections.
+        agnostic (bool): If True, NMS will be applied to all detections together.
+                         If False, NMS will be applied separately for each action ID.
+        nms_score (str): Type of score to be used for sorting: 'obj_score', 'action_score', or 'joint'.
+        nms_distance (str): NMS method to be used: 'IOU' or 'IOS'.
+        nms_thresh (float): Threshold for IOU or IOS.
 
-        # remove S from P
-        order = order[:-1]
+    Returns:
+        dict: Dictionary with NMS-applied detections.
+    """
 
-        # sanity check
-        if len(order) == 0:
-            break
-
-        # select coordinates of BBoxes according to
-        # the indices in order
-        xx1 = torch.index_select(x1, dim=0, index=order)
-        xx2 = torch.index_select(x2, dim=0, index=order)
-        yy1 = torch.index_select(y1, dim=0, index=order)
-        yy2 = torch.index_select(y2, dim=0, index=order)
-
-        # find the coordinates of the intersection boxes
-        xx1 = torch.max(xx1, x1[idx])
-        yy1 = torch.max(yy1, y1[idx])
-        xx2 = torch.min(xx2, x2[idx])
-        yy2 = torch.min(yy2, y2[idx])
-
-        # find height and width of the intersection boxes
-        w = xx2 - xx1
-        h = yy2 - yy1
-
-        # take max with 0.0 to avoid negative w and h
-        # due to non-overlapping boxes
-        w = torch.clamp(w, min=0.0)
-        h = torch.clamp(h, min=0.0)
-
-        # find the intersection area
-        inter = w * h
-
-        # find the areas of BBoxes according the indices in order
-        rem_areas = torch.index_select(areas, dim=0, index=order)
-
-        if match_metric == "IOU":
-            # find the union of every prediction T in P
-            # with the prediction S
-            # Note that areas[idx] represents area of S
-            union = (rem_areas - inter) + areas[idx]
-            # find the IoU of every prediction in P with S
-            match_metric_value = inter / union
-
-        elif match_metric == "IOS":
-            # find the smaller area of every prediction T in P
-            # with the prediction S
-            # Note that areas[idx] represents area of S
-            smaller = torch.min(rem_areas, areas[idx])
-            # find the IoU of every prediction in P with S
-            match_metric_value = inter / smaller
+    nms_applied_dict = {}
+    for frame, detections in detections_dict.items():
+        if agnostic:
+            nms_applied_detections = agnostic_nms_action_detection(detections,
+                                                                   nms_score=nms_score, 
+                                                                   nms_distance=nms_distance, 
+                                                                   nms_thresh=nms_thresh)
         else:
-            raise ValueError()
-
-        # keep the boxes with IoU less than thresh_iou
-        mask = match_metric_value < match_threshold
-        order = order[mask]
-    return keep
+            nms_applied_detections = class_based_nms_action_detection(detections,
+                                                                   nms_score=nms_score, 
+                                                                   nms_distance=nms_distance, 
+                                                                   nms_thresh=nms_thresh)
 
 
-class PostprocessPredictions:
-    """Utilities for calculating IOU/IOS based match for given ObjectPredictions"""
+        nms_applied_dict[frame] = nms_applied_detections
 
-    def __init__(
-        self,
-        sort_metric: str = "scores",
-        match_threshold: float = 0.5,
-        match_metric: str = "IOU"
-    ):
-        self.sort_metric = sort_metric
-        self.match_threshold = match_threshold
-        self.match_metric = match_metric
-
-    def __call__(self):
-        raise NotImplementedError()
-
-
-class NMSPostprocess(PostprocessPredictions):
-    def __call__(
-        self,
-        action_predictions,
-    ):
-        if action_predictions.shape[0] == 0:
-            return None
-        
-        action_predictions_torch = torch.from_numpy(action_predictions)
-        keep = nms(
-            action_predictions_torch, 
-            sort_metric = self.sort_metric,
-            match_threshold=self.match_threshold, 
-            match_metric=self.match_metric
-            )
-        if len(keep) != 0:
-            selected_action_predictions= action_predictions_torch[keep].numpy()
-        else:
-            return None
-        
-
-        return selected_action_predictions, keep
-
-
+    return nms_applied_dict

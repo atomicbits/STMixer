@@ -9,8 +9,7 @@ import math
 
 def ava_preprocessing_cv2(sample_cropped_clip, cfg):
     
-    
-    height, width, _ = sample_cropped_clip[0].shape
+    #height, width, _ = sample_cropped_clip[0].shape
     
     imgs, boxes = cv2_transform.random_short_side_scale_jitter(
         sample_cropped_clip,
@@ -96,11 +95,11 @@ def clip_constructor(tensor, rate_sample, num_frames):
     
 
 def batch_different_videos(videos, size_divisible=0):
-    '''
+    """
     :param videos: a list of video tensors
     :param size_divisible: output_size(width and height) should be divisble by this param
     :return: batched videos as a single tensor
-    '''
+    """
     assert isinstance(videos, (tuple, list))
     max_size = tuple(max(s) for s in zip(*[clip.shape for clip in videos]))
 
