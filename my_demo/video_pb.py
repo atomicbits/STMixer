@@ -190,7 +190,7 @@ def main(args):
                                                  output_directory,
                                                  top_k=args.top_k,
                                                  list_actions = args.actions,
-                                                other_actions_color = (0, 255, 0), # green
+                                                 other_actions_color = (0, 255, 0), # green
                                                  all_actions=True,
                                                  long_text_show=False,
                                                  mode='movie',
