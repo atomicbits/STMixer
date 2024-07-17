@@ -44,7 +44,7 @@ _C.DATA.RANDOM_FLIP = True
 # If True, revert the default input channel (RBG <-> BGR).
 _C.DATA.REVERSE_INPUT_CHANNEL = False
 
-_C.DATA.DATASETS = ['ava_v2.2']
+_C.DATA.DATASETS = ['ava']
 
 
 # -----------------------------------------------------------------------------
@@ -60,7 +60,7 @@ _C.AVA.FRAME_LIST_DIR = "frame_lists/"
 
 
 # Directory path for annotation files.
-_C.AVA.ANNOTATION_DIR = "annotations_v2.2/"
+_C.AVA.ANNOTATION_DIR = "annotations/"
 
 # Filenames of training samples list files.
 _C.AVA.TRAIN_LISTS = ["train.csv"]
@@ -162,7 +162,7 @@ _C.MODEL.WEIGHT = ""
 _C.MODEL.BACKBONE = CN()
 # The backbone conv body to use
 # Available backbone conv-body should be registered in modeling.backbone.backbone.py
-_C.MODEL.BACKBONE.CONV_BODY = "Slowfast-Resnet50"
+_C.MODEL.BACKBONE.CONV_BODY = "MAE-ViT-B"
 _C.MODEL.BACKBONE.PATHWAYS = 1
 _C.MODEL.BACKBONE.FROZEN_BN = False
 

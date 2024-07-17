@@ -1,8 +1,7 @@
 import datetime
 import logging
 import time
-import pynvml
-
+import deepspeed
 import torch
 
 from alphaction.utils.metric_logger import MetricLogger
@@ -29,7 +28,6 @@ def do_train(
         mem_active,
         frozen_backbone_bn,
         output_folder,
-        handle
 ):
     logger = logging.getLogger("alphaction.trainer")
     logger.info("Start training")
@@ -46,9 +44,36 @@ def do_train(
     end = time.time()
     losses_reduced = torch.tensor(0.0)
 
-    # Creates a GradScaler once at the beginning of training.
-    scaler = torch.cuda.amp.GradScaler()
+    deepspeed_config = {
+        "train_batch_size": 2,
+        "gradient_accumulation_steps": 2,
+          "fp16": {
+            "enabled": False 
+        },  # Uses mixed precision - More about this https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html
+        "zero_optimization": {
+            "stage": 2,  # Using ZeRO Stage 2 for this example. Just change the stage to 
+            "allgather_partitions": True,
+            "allgather_bucket_size": 2e8,
+            "reduce_scatter": True,
+            "reduce_bucket_size": 2e8,
+            "overlap_comm": True,
+            "load_from_fp32_weights": True
+        },
+        "optimizer": {
+            "type": "Adam", #
+            "params": {
+                "lr": 1e-3
+            }
+        }
+    }
 
+    # Initialize DeepSpeed
+    model_engine, optimizer, _, _ = deepspeed.initialize(args=None,
+                                                     model=model,
+                                                     model_parameters=model.parameters(),
+                                                     optimizer=optimizer,
+                                                     scheduler=scheduler,
+                                                     config_params=deepspeed_config)
 
     for iteration, (slow_video, fast_video, whwh, boxes, labels, metadata, idx) in enumerate(data_loader, start_iter):
         data_time = time.time() - end
@@ -68,26 +93,10 @@ def do_train(
             mem_extras["movie_ids"] = movie_ids
             mem_extras["timestamps"] = timestamps
             mem_extras["cur_loss"] = losses_reduced.item()
-        
-        with torch.cuda.amp.autocast():
-            loss_dict  = model(slow_video, fast_video, whwh, boxes, labels)
-        losses = sum(loss_dict.values()) / len(loss_dict)
-            
-        # Scales loss.  Calls backward() on scaled loss to create scaled gradients.
-        # Backward passes under autocast are not recommended.
-        # Backward ops run in the same dtype autocast chose for corresponding forward ops.
-        scaler.scale(losses).backward()
 
-        # scaler.step() first unscales the gradients of the optimizer's assigned params.
-        # If these gradients do not contain infs or NaNs, optimizer.step() is then called,
-        # otherwise, optimizer.step() is skipped.
-        scaler.step(optimizer)
 
-        # Updates the scale for next iteration.
-        scaler.update()
 
-        
-
+        loss_dict  = model_engine(slow_video, fast_video, whwh, boxes, labels)
         losses = sum(loss_dict.values()) / len(loss_dict)
 
         # reduce losses over all GPUs for logging purposes
@@ -97,7 +106,9 @@ def do_train(
         meters.update(**loss_dict_reduced)
         losses_reduced = loss_dict_reduced.pop("total_loss")
 
-        optimizer.zero_grad()
+        model_engine.backward(losses)
+        model_engine.step()
+        #optimizer.zero_grad()
         #losses.backward()
         #optimizer.step()
 

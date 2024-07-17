@@ -13,7 +13,7 @@ from alphaction.config import cfg
 from alphaction.dataset import make_data_loader
 from alphaction.solver import make_lr_scheduler, make_optimizer
 from alphaction.engine.inference import inference
-from alphaction.engine.trainer import do_train
+from alphaction.engine.ds_trainer import do_train
 from alphaction.modeling.detector import build_detection_model
 from alphaction.utils.checkpoint import ActionCheckpointer
 from alphaction.utils.comm import synchronize, get_rank
@@ -37,6 +37,7 @@ def train(cfg, local_rank, distributed, tblogger=None, transfer_weight=False, ad
 
     device = torch.device("cuda")
     model.to(device)
+
 
     # make solver.
     optimizer = make_optimizer(cfg, model)
@@ -63,7 +64,7 @@ def train(cfg, local_rank, distributed, tblogger=None, transfer_weight=False, ad
     checkpointer = ActionCheckpointer(cfg, model, optimizer, scheduler, output_dir, save_to_disk)
     extra_checkpoint_data = checkpointer.load(cfg.MODEL.WEIGHT, model_weight_only=transfer_weight,
                                               adjust_scheduler=adjust_lr, no_head=no_head)
-
+    
 
     arguments.update(extra_checkpoint_data)
 
@@ -111,8 +112,7 @@ def train(cfg, local_rank, distributed, tblogger=None, transfer_weight=False, ad
         distributed,
         mem_active,
         frozen_backbone_bn,
-        output_folder,
-        handle
+        output_folder
     )
 
     return model

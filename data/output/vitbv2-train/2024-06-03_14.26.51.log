@@ -1,0 +1,288 @@
+2024-06-03 14:26:51,219 alphaction INFO: Using 1 GPUs
+2024-06-03 14:26:51,219 alphaction INFO: Namespace(adjust_lr=False, config_file='config_files/VMAEv2-ViTB-16x4.yaml', distributed=False, local_rank=0, no_head=True, opts=[], seed=2, skip_test=False, skip_val=False, tfboard=False, transfer_weight=True)
+2024-06-03 14:26:51,219 alphaction INFO: Collecting env info (might take some time)
+2024-06-03 14:26:53,144 alphaction INFO: 
+PyTorch version: 1.14.0a0+410ce96
+Is debug build: False
+CUDA used to build PyTorch: 11.8
+ROCM used to build PyTorch: N/A
+
+OS: Ubuntu 20.04.5 LTS (x86_64)
+GCC version: (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0
+Clang version: Could not collect
+CMake version: version 3.24.1
+Libc version: glibc-2.31
+
+Python version: 3.8.10 (default, Nov 14 2022, 12:59:47)  [GCC 9.4.0] (64-bit runtime)
+Python platform: Linux-5.4.0-182-generic-x86_64-with-glibc2.29
+Is CUDA available: True
+CUDA runtime version: 11.8.89
+CUDA_MODULE_LOADING set to: LAZY
+GPU models and configuration: GPU 0: NVIDIA GeForce RTX 3090
+Nvidia driver version: 550.54.15
+cuDNN version: Probably one of the following:
+/usr/lib/x86_64-linux-gnu/libcudnn.so.8.7.0
+/usr/lib/x86_64-linux-gnu/libcudnn_adv_infer.so.8.7.0
+/usr/lib/x86_64-linux-gnu/libcudnn_adv_train.so.8.7.0
+/usr/lib/x86_64-linux-gnu/libcudnn_cnn_infer.so.8.7.0
+/usr/lib/x86_64-linux-gnu/libcudnn_cnn_train.so.8.7.0
+/usr/lib/x86_64-linux-gnu/libcudnn_ops_infer.so.8.7.0
+/usr/lib/x86_64-linux-gnu/libcudnn_ops_train.so.8.7.0
+HIP runtime version: N/A
+MIOpen runtime version: N/A
+Is XNNPACK available: True
+
+Versions of relevant libraries:
+[pip3] numpy==1.22.2
+[pip3] pytorch-quantization==2.1.2
+[pip3] pytorchvideo==0.1.5
+[pip3] torch==1.14.0a0+410ce96
+[pip3] torch-tensorrt==1.3.0a0
+[pip3] torchtext==0.13.0a0+fae8e8c
+[pip3] torchvision==0.15.0a0
+[conda] Could not collect
+2024-06-03 14:26:53,145 alphaction INFO: Loaded configuration file config_files/VMAEv2-ViTB-16x4.yaml
+2024-06-03 14:26:53,145 alphaction INFO: 
+DATA:
+  PATH_TO_DATA_DIR: "/path/to/ava"
+  NUM_FRAMES: 16
+  SAMPLING_RATE: 4
+  INPUT_CHANNEL_NUM: [3]
+  DATASETS: ['ava_v2.2']
+  TRAIN_MIN_SCALES: [256, 320]
+  TEST_MIN_SCALES: [256]
+AVA:
+  ANNOTATION_DIR: "annotations_v2.2/"
+MODEL:
+  WEIGHT: "/path/to/weight.pth"
+  BACKBONE:
+    CONV_BODY: "MAE-ViT-B"
+    PATHWAYS: 1
+  STM:
+    NUM_QUERIES: 100
+    HIDDEN_DIM: 256
+    NUM_STAGES: 6
+    ACTION_CLASSES: 80
+    OBJECT_CLASSES: 1
+    NUM_HEADS: 8
+    DROPOUT: 0.0
+    DIM_FEEDFORWARD: 2048
+    NUM_FCS: 2
+    ACTIVATION: 'ReLU'
+    SPATIAL_POINTS: 32
+    TEMPORAL_POINTS: 8
+    OUT_MULTIPLIER: 4
+    N_GROUPS: 4
+    NUM_CLS: 1
+    NUM_ACT: 1
+    NUM_REG: 1
+    OBJECT_WEIGHT: 2.0
+    ACTION_WEIGHT: 48.0
+    GIOU_WEIGHT: 2.0
+    L1_WEIGHT: 2.0
+    BACKGROUND_WEIGHT: 0.1
+    INTERMEDIATE_SUPERVISION: True
+    PERSON_THRESHOLD: 0.6
+    MEM_ACTIVE: False
+ViT:
+  EMBED_DIM: 768
+  DEPTH: 12
+  USE_CHECKPOINT: True
+  LAYER_DECAY: 1.0
+  WEIGHT_DECAY: 1e-4
+  DROP_PATH_RATE: 0.2
+SOLVER:
+  ITER_PER_EPOCH: 23048
+  MAX_EPOCH: 12
+  BASE_LR: 0.00001
+  WEIGHT_DECAY: 1e-4
+  STEPS: (5, 8)
+  WARMUP_FACTOR: 0.1
+  WARMUP_EPOCH: 2
+  CHECKPOINT_PERIOD: 1
+  EVAL_PERIOD: 1
+  EVAL_AFTER: 3
+  VIDEOS_PER_BATCH: 8
+  OPTIMIZING_METHOD: 'adamw'
+TEST:
+  VIDEOS_PER_BATCH: 16
+OUTPUT_DIR: "data/output/vitbv2-train"
+
+2024-06-03 14:26:53,146 alphaction INFO: Running with config:
+AK:
+  TEST_GT_BOX_LISTS: ['kinetics/ak_val_gt.csv']
+AVA:
+  ANNOTATION_DIR: annotations_v2.2/
+  BGR: False
+  EXCLUSION_FILE: ava_val_excluded_timestamps_v2.2.csv
+  FRAME_DIR: frames/
+  FRAME_LIST_DIR: frame_lists/
+  GROUNDTRUTH_FILE: ava_val_v2.2.csv
+  LABEL_MAP_FILE: ava_action_list_v2.2_for_activitynet_2019.pbtxt
+  STRICT_EVAL: True
+  TEST_FORCE_FLIP: False
+  TEST_GT_BOX_LISTS: ['ava_val_v2.2.csv']
+  TEST_LISTS: ['val.csv']
+  TRAIN_GT_BOX_LISTS: ['ava_train_v2.2.csv']
+  TRAIN_LISTS: ['train.csv']
+  TRAIN_PCA_EIGVAL: [0.225, 0.224, 0.229]
+  TRAIN_PCA_EIGVEC: [[-0.5675, 0.7192, 0.4009], [-0.5808, -0.0045, -0.814], [-0.5836, -0.6948, 0.4203]]
+  TRAIN_PCA_JITTER_ONLY: True
+  TRAIN_USE_COLOR_AUGMENTATION: False
+DATA:
+  DATASETS: ['ava_v2.2']
+  DECODING_BACKEND: pyav
+  INPUT_CHANNEL_NUM: [3]
+  MEAN: [0.45, 0.45, 0.45]
+  NUM_FRAMES: 16
+  PATH_TO_DATA_DIR: /path/to/ava
+  RANDOM_FLIP: True
+  REVERSE_INPUT_CHANNEL: False
+  SAMPLING_RATE: 4
+  STD: [0.225, 0.225, 0.225]
+  TARGET_FPS: 30
+  TEST_MAX_SCALE: 1333
+  TEST_MIN_SCALES: [256]
+  TRAIN_MAX_SCALE: 1333
+  TRAIN_MIN_SCALES: [256, 320]
+DATALOADER:
+  ASPECT_RATIO_GROUPING: False
+  NUM_WORKERS: 4
+  SIZE_DIVISIBILITY: 32
+KINETICS:
+  ANNOTATION_DIR: kinetics/annotations/
+  FRAME_LIST_DIR: kinetics/frame_lists/
+  TEST_GT_BOX_LISTS: ['kinetics_val_curated.csv']
+  TEST_LISTS: ['val.csv']
+  TRAIN_GT_BOX_LISTS: ['kinetics_train_curated.csv']
+  TRAIN_LISTS: ['train.csv']
+  VIDEO_DIR: 
+MODEL:
+  BACKBONE:
+    BN_EPSILON: 1e-05
+    BN_INIT_GAMMA: 0.0
+    BN_MOMENTUM: 0.1
+    CONV_BODY: MAE-ViT-B
+    FROZEN_BN: False
+    I3D:
+      CONV3_GROUP_NL: False
+      CONV3_NONLOCAL: True
+      CONV4_NONLOCAL: True
+    PATHWAYS: 1
+    SLOWFAST:
+      BETA: 0.125
+      FAST:
+        ACTIVE: True
+        CONV3_GROUP_NL: False
+        CONV3_NONLOCAL: False
+        CONV4_NONLOCAL: False
+      LATERAL: tconv
+      SLOW:
+        ACTIVE: True
+        CONV3_GROUP_NL: False
+        CONV3_NONLOCAL: True
+        CONV4_NONLOCAL: True
+  NONLOCAL:
+    BN_EPSILON: 1e-05
+    BN_INIT_GAMMA: 0.0
+    BN_MOMENTUM: 0.1
+    CONV_INIT_STD: 0.01
+    FROZEN_BN: False
+    NO_BIAS: False
+    USE_BN: True
+    USE_MAXPOOL: True
+    USE_SCALE: True
+    USE_SOFTMAX: True
+    USE_ZERO_INIT_CONV: False
+  STM:
+    ACTION_CLASSES: 80
+    ACTION_WEIGHT: 48.0
+    ACTIVATION: ReLU
+    BACKGROUND_WEIGHT: 0.1
+    DIM_FEEDFORWARD: 2048
+    DROPOUT: 0.0
+    GIOU_WEIGHT: 2.0
+    HIDDEN_DIM: 256
+    INTERMEDIATE_SUPERVISION: True
+    L1_WEIGHT: 2.0
+    MEM_ACTIVE: False
+    NUM_ACT: 1
+    NUM_CLS: 1
+    NUM_FCS: 2
+    NUM_HEADS: 8
+    NUM_QUERIES: 100
+    NUM_REG: 1
+    NUM_STAGES: 6
+    N_GROUPS: 4
+    OBJECT_CLASSES: 1
+    OBJECT_WEIGHT: 2.0
+    OUT_MULTIPLIER: 4
+    PERSON_THRESHOLD: 0.6
+    SPATIAL_POINTS: 32
+    TEMPORAL_POINTS: 8
+  WEIGHT: /path/to/weight.pth
+NONLOCAL:
+  GROUP: [[1], [1], [1], [1]]
+  INSTANTIATION: dot_product
+  LOCATION: [[[]], [[]], [[]], [[]]]
+  POOL: [[[1, 2, 2], [1, 2, 2]], [[1, 2, 2], [1, 2, 2]], [[1, 2, 2], [1, 2, 2]], [[1, 2, 2], [1, 2, 2]]]
+OUTPUT_DIR: data/output/vitbv2-train
+RESNET:
+  DEFORM_ON_PER_STAGE: [False, False, False, False]
+  DEPTH: 50
+  INPLACE_RELU: True
+  NUM_BLOCK_TEMP_KERNEL: [[3], [4], [6], [3]]
+  NUM_GROUPS: 1
+  SPATIAL_DILATIONS: [[1], [1], [1], [1]]
+  SPATIAL_STRIDES: [[1], [2], [2], [2]]
+  STRIDE_1X1: False
+  TRANS_FUNC: bottleneck_transform
+  WIDTH_PER_GROUP: 64
+  ZERO_INIT_FINAL_BN: False
+SLOWFAST:
+  ALPHA: 8
+  BETA_INV: 8
+  FUSION_CONV_CHANNEL_RATIO: 2
+  FUSION_KERNEL_SZ: 5
+SOLVER:
+  BASE_LR: 1e-05
+  BETAS: (0.9, 0.999)
+  CHECKPOINT_PERIOD: 1
+  EVAL_AFTER: 3
+  EVAL_PERIOD: 1
+  GAMMA: 0.1
+  ITER_PER_EPOCH: 23048
+  MAX_EPOCH: 12
+  OPTIMIZING_METHOD: adamw
+  SCHEDULER: warmup_multi_step
+  STEPS: (5, 8)
+  VIDEOS_PER_BATCH: 8
+  WARMUP_EPOCH: 2
+  WARMUP_FACTOR: 0.1
+  WARMUP_METHOD: linear
+  WARMUP_ON: True
+  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY_BN: 0.0
+TEST:
+  VIDEOS_PER_BATCH: 16
+ViT:
+  ATTN_DROP_RATE: 0.0
+  DEPTH: 12
+  DROP_PATH_RATE: 0.2
+  DROP_RATE: 0.0
+  EMBED_DIM: 768
+  INIT_VALUES: 0.0
+  IN_CHANS: 3
+  LAYER_DECAY: 1.0
+  MLP_RATIO: 4
+  NO_WEIGHT_DECAY: ['pos_embed']
+  NUM_HEADS: 12
+  PATCH_SIZE: 16
+  PRETRAIN_IMG_SIZE: 448
+  QKV_BIAS: True
+  QK_SCALE: None
+  TUBELET_SIZE: 2
+  USE_CHECKPOINT: True
+  USE_LEARNABLE_POS_EMB: False
+  WEIGHT_DECAY: 0.0001
+2024-06-03 14:27:26,406 alphaction.utils.checkpoint INFO: Loading checkpoint from /path/to/weight.pth

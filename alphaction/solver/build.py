@@ -208,6 +208,7 @@ def make_optimizer(cfg, model):
             "Does not support {} optimizer".format(cfg.SOLVER.OPTIMIZING_METHOD)
         )
 
+    print(optim_params)
     return optimizer
 
 

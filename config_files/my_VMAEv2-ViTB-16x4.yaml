@@ -1,13 +1,13 @@
 DATA:
-  PATH_TO_DATA_DIR: "/path/to/ava"
+  PATH_TO_DATA_DIR: "/work/ava"
   NUM_FRAMES: 16
   SAMPLING_RATE: 4
   INPUT_CHANNEL_NUM: [3]
   DATASETS: ['ava_v2.2']
-  TRAIN_MIN_SCALES: [512, 640]
-  TEST_MIN_SCALES: [512]
+  TRAIN_MIN_SCALES: [256, 320]
+  TEST_MIN_SCALES: [256]
 AVA:
-  ANNOTATION_DIR: "annotations_v2.2/"
+  ANNOTATION_DIR: "annotations/"
 MODEL:
   WEIGHT: "/work/checkpoints/vit_b_backbone.pth"
   BACKBONE:
@@ -57,8 +57,8 @@ SOLVER:
   CHECKPOINT_PERIOD: 1
   EVAL_PERIOD: 1
   EVAL_AFTER: 3
-  VIDEOS_PER_BATCH: 8
+  VIDEOS_PER_BATCH: 1
   OPTIMIZING_METHOD: 'adamw'
 TEST:
-  VIDEOS_PER_BATCH: 16
-OUTPUT_DIR: "data/output/vitbv2-train"
+  VIDEOS_PER_BATCH: 1
+OUTPUT_DIR: "/work/checkpoints/training"
