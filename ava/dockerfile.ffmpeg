@@ -1,0 +1,12 @@
+# Use Ubuntu as the base image
+FROM jrottenberg/ffmpeg:4.3-ubuntu
+
+# Copy the script into the container
+COPY extract_frames.sh /extract_frames.sh
+
+# Set execute permission on the script
+RUN chmod +x /extract_frames.sh
+
+# Run the script when the container starts
+CMD ["/extract_frames.sh"]
+
